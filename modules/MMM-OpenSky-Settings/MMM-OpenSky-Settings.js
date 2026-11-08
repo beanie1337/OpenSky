@@ -12,7 +12,9 @@ Module.register("MMM-OpenSky-Settings", {
   },
 
   getStyles() { return ["MMM-OpenSky-Settings.css"]; },
-  getScripts() { return ["modules/opensky-lib/client/opensky-client.js"]; },
+  getScripts() { return ["modules/opensky-lib/client/opensky-client.js", "modules/opensky-lib/client/i18n.js", "modules/opensky-lib/client/i18n/en.js", "modules/opensky-lib/client/i18n/sv.js"]; },
+
+  t(key, vars, fallback) { return window.OpenSkyT(key, vars, fallback); },
 
   start() {
     this.state = null;
@@ -56,7 +58,7 @@ Module.register("MMM-OpenSky-Settings", {
       if (this.isOpen()) this.renderPrefs();
     } else if (n === "OS_SET_BACKUP") {
       if (this.prefs) this.prefs.status = p.status;
-      window.OpenSkyToast(p.status.ok ? "Backed up ✓" : `Backup failed: ${p.status.error}`, p.status.ok ? "success" : "error");
+      window.OpenSkyToast(p.status.ok ? this.t("settings.backedUp") : this.t("settings.backupFailed", { error: p.status.error }), p.status.ok ? "success" : "error");
       if (this.isOpen()) this.renderPrefs();
     } else if (n === "OS_SET_WAKE") {
       this.sendNotification("OPENSKY_WAKE");
@@ -152,52 +154,53 @@ Module.register("MMM-OpenSky-Settings", {
   render() {
     if (!this.panel) return;
     const st = this.state;
-    if (!st) { this.panel.innerHTML = `<div class="ost-panel"><div class="ost-loading">Loading…</div></div>`; return; }
-    const s = st.settings;
+    if (!st) { this.panel.innerHTML = `<div class="ost-panel"><div class="ost-loading">${this.t("settings.loading")}</div></div>`; return; }
+    const s = st.settings, t = (k, v, f) => this.t(k, v, f);
     this.drawnShape = this.shape(st);
-    const methodNote = { backlight: "The display's own backlight", ddc: "The monitor's brightness (over HDMI)", software: "Dims the picture (this screen doesn't take brightness commands)" }[st.brightness.method] || "";
+    const methodNote = ["backlight", "ddc", "software"].includes(st.brightness.method) ? t(`settings.method.${st.brightness.method}`) : "";
+    const screenLabel = (m) => t(`settings.screenOff.${m}`, null, st.screen.labels[m]);
     this.panel.innerHTML = `
-      <div class="ost-panel" role="dialog" aria-label="Settings">
-        <div class="ost-head"><span class="ost-title">Settings</span><button class="ost-x" aria-label="Close">×</button></div>
+      <div class="ost-panel" role="dialog" aria-label="${t("settings.title")}">
+        <div class="ost-head"><span class="ost-title">${t("settings.title")}</span><button class="ost-x" aria-label="${t("settings.close")}">×</button></div>
         <div class="ost-body">
           <section class="ost-section">
-            <h3>Screen</h3>
-            <div class="ost-row"><span class="ost-label">Brightness</span>${this.slider("brightness", s.brightness, 10, 100)}</div>
+            <h3>${t("settings.screen")}</h3>
+            <div class="ost-row"><span class="ost-label">${t("settings.brightness")}</span>${this.slider("brightness", s.brightness, 10, 100)}</div>
             <div class="ost-note">${methodNote}</div>
-            <div class="ost-row"><span class="ost-label">Sleep turns off by</span><select class="ost-select ost-wide" data-screenoff>${Object.entries(st.screen.labels).map(([m, l]) => `<option value="${m}" ${m === st.screen.method ? "selected" : ""} ${st.screen.available[m] ? "" : "disabled"}>${l}${st.screen.available[m] ? "" : " — not found on this Pi"}</option>`).join("")}</select><button class="ost-btn ost-test-screen">Test</button></div>
-            <div class="ost-note">Every screen is different: try the options with Test (it comes back after 10 seconds, or at a touch). If one doesn't suit your screen, use Black screen + dim.${st.screen.method === "auto" ? ` Now: ${st.screen.labels[st.screen.resolved].replace(/ \(.*/, "")}.` : ""}</div>
-            <div class="ost-row">${this.toggle("dim", s.eveningDim.enabled)}<span class="ost-label">Dim in the evening</span></div>
+            <div class="ost-row"><span class="ost-label">${t("settings.sleepBy")}</span><select class="ost-select ost-wide" data-screenoff>${Object.keys(st.screen.labels).map((m) => `<option value="${m}" ${m === st.screen.method ? "selected" : ""} ${st.screen.available[m] ? "" : "disabled"}>${screenLabel(m)}${st.screen.available[m] ? "" : t("settings.notFound")}</option>`).join("")}</select><button class="ost-btn ost-test-screen">${t("settings.test")}</button></div>
+            <div class="ost-note">${t("settings.screenHelp")}${st.screen.method === "auto" ? t("settings.screenNow", { method: screenLabel(st.screen.resolved).replace(/ \(.*/, "") }) : ""}</div>
+            <div class="ost-row">${this.toggle("dim", s.eveningDim.enabled)}<span class="ost-label">${t("settings.dimEvening")}</span></div>
             <div class="ost-sub" ${s.eveningDim.enabled ? "" : "hidden"}>
-              <div class="ost-row"><span class="ost-label">From</span>${this.stepper("dimFrom", s.eveningDim.from)}</div>
-              <div class="ost-row"><span class="ost-label">Level</span>${this.slider("dimLevel", s.eveningDim.level, 10, 100)}</div>
+              <div class="ost-row"><span class="ost-label">${t("settings.from")}</span>${this.stepper("dimFrom", s.eveningDim.from)}</div>
+              <div class="ost-row"><span class="ost-label">${t("settings.level")}</span>${this.slider("dimLevel", s.eveningDim.level, 10, 100)}</div>
             </div>
           </section>
           <section class="ost-section">
-            <h3>Sleep at night</h3>
-            <div class="ost-row">${this.toggle("sleep", s.sleep.enabled)}<span class="ost-label">Turn the screen off at night</span></div>
+            <h3>${t("settings.sleepAtNight")}</h3>
+            <div class="ost-row">${this.toggle("sleep", s.sleep.enabled)}<span class="ost-label">${t("settings.sleepToggle")}</span></div>
             <div class="ost-sub" ${s.sleep.enabled ? "" : "hidden"}>
-              <div class="ost-row"><span class="ost-label">Off at</span>${this.stepper("sleepOff", s.sleep.off)}</div>
-              <div class="ost-row"><span class="ost-label">On at</span>${this.stepper("sleepOn", s.sleep.on)}</div>
-              <div class="ost-note">A touch wakes it; it goes back to sleep after ${this.config.resleepMinutes} quiet minutes. A running timer keeps it on.</div>
+              <div class="ost-row"><span class="ost-label">${t("settings.offAt")}</span>${this.stepper("sleepOff", s.sleep.off)}</div>
+              <div class="ost-row"><span class="ost-label">${t("settings.onAt")}</span>${this.stepper("sleepOn", s.sleep.on)}</div>
+              <div class="ost-note">${t("settings.sleepNote", { minutes: this.config.resleepMinutes })}</div>
             </div>
           </section>
           <section class="ost-section">
-            <h3>Sound</h3>
+            <h3>${t("settings.sound")}</h3>
             ${st.audio ? `
-              <div class="ost-row"><span class="ost-label">Volume</span>${this.slider("volume", st.audio.volume, 0, 100)}<button class="ost-btn ost-test">Test</button></div>
-              <div class="ost-note"></div>` : `<div class="ost-note">No speaker found. Plug one in (USB, HDMI or the headphone socket) and restart OpenSky.</div>`}
+              <div class="ost-row"><span class="ost-label">${t("settings.volume")}</span>${this.slider("volume", st.audio.volume, 0, 100)}<button class="ost-btn ost-test">${t("settings.test")}</button></div>
+              <div class="ost-note"></div>` : `<div class="ost-note">${t("settings.noSpeaker")}</div>`}
           </section>
           <div class="ost-prefs"></div>
           <section class="ost-section">
-            <h3>System</h3>
+            <h3>${t("settings.system")}</h3>
             <div class="ost-status"></div>
             <div class="ost-buttons">
-              <button class="ost-btn ost-phone" data-act="phone">Set up from your phone</button>
-              <button class="ost-btn" data-act="reload">Reload screen</button>
-              ${st.canRestart ? `<button class="ost-btn" data-act="restart-app">Restart OpenSky</button>` : ""}
-              <button class="ost-btn ost-update" data-act="update" hidden>Update</button>
-              <button class="ost-btn" data-act="reboot">Restart Pi</button>
-              <button class="ost-btn ost-danger" data-act="shutdown">Shut down</button>
+              <button class="ost-btn ost-phone" data-act="phone">${t("settings.phone")}</button>
+              <button class="ost-btn" data-act="reload">${t("settings.reload")}</button>
+              ${st.canRestart ? `<button class="ost-btn" data-act="restart-app">${t("settings.restartApp")}</button>` : ""}
+              <button class="ost-btn ost-update" data-act="update" hidden>${t("settings.update")}</button>
+              <button class="ost-btn" data-act="reboot">${t("settings.restartPi")}</button>
+              <button class="ost-btn ost-danger" data-act="shutdown">${t("settings.shutDown")}</button>
             </div>
           </section>
         </div>
@@ -229,7 +232,7 @@ Module.register("MMM-OpenSky-Settings", {
   renderPrefs() {
     const box = this.panel && this.panel.querySelector(".ost-prefs");
     if (!box) return;
-    const P = this.prefs;
+    const P = this.prefs, t = (k, v, f) => this.t(k, v, f);
     if (!P) { box.innerHTML = ""; return; }
     const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
     const all = [...P.pages, ...Object.keys(P.names).filter((k) => !P.pages.includes(k))];
@@ -238,52 +241,53 @@ Module.register("MMM-OpenSky-Settings", {
     const A = window.OpenSkyAccent;
     const custom = /^#/.test(P.prefs.accent) ? P.prefs.accent : null;   // a color code (look.accent "#rrggbb")
     if (this.hexDraft == null) this.hexDraft = custom || "";
-    const placeOpts = [["", "Off"], ...P.places.map((x) => [x.path, x.label + (x.freeMB != null ? ` · ${x.freeMB >= 1024 ? Math.round(x.freeMB / 1024) + " GB" : x.freeMB + " MB"} free` : "")])];
-    if (P.backup.destination && !P.places.some((x) => x.path === P.backup.destination)) placeOpts.push([P.backup.destination, `${P.backup.destination} (not available now)`]);
+    const placeOpts = [["", t("settings.off")], ...P.places.map((x) => [x.path, x.label + (x.freeMB != null ? ` · ${t("settings.free", { size: x.freeMB >= 1024 ? Math.round(x.freeMB / 1024) + " GB" : x.freeMB + " MB" })}` : "")])];
+    if (P.backup.destination && !P.places.some((x) => x.path === P.backup.destination)) placeOpts.push([P.backup.destination, t("settings.notAvailable", { path: P.backup.destination })]);
     const st = P.status || {};
-    const last = st.last ? `${st.ok ? "Last backup" : "Last try"}: ${new Date(st.last).toLocaleString(config.locale || "en-US", { dateStyle: "medium", timeStyle: "short" })}${st.ok ? " ✓" : " — " + esc(st.error || "")}` : "No automatic backup yet.";
+    const last = st.last ? `${st.ok ? t("settings.lastBackup") : t("settings.lastTry")}: ${new Date(st.last).toLocaleString(config.locale || "en-US", { dateStyle: "medium", timeStyle: "short" })}${st.ok ? " ✓" : " — " + esc(st.error || "")}` : t("settings.noBackup");
+    const pageName = (k) => ((P.embeds || []).some((e) => e.key === k) ? P.names[k] : t(`page.${k}`, null, P.names[k]));
     box.innerHTML = `
-      ${this.restartNeeded ? `<div class="ost-restart"><span>Some changes show after a restart.</span><button class="ost-btn ost-primary" data-act="${(this.state && this.state.canRestart) ? "restart-app" : "reload"}">Restart now</button></div>` : ""}
+      ${this.restartNeeded ? `<div class="ost-restart"><span>${t("settings.restartNeeded")}</span><button class="ost-btn ost-primary" data-act="${(this.state && this.state.canRestart) ? "restart-app" : "reload"}">${t("settings.restartNow")}</button></div>` : ""}
       ${this.webForm ? this.webFormHtml(P, esc) : ""}
       <section class="ost-section">
-        <h3>Pages</h3>
-        <div class="ost-note">The buttons down the left side, top to bottom.</div>
+        <h3>${t("settings.pages")}</h3>
+        <div class="ost-note">${t("settings.pagesNote")}</div>
         ${all.map((k) => { const on = P.pages.includes(k), i = P.pages.indexOf(k); return `
           <div class="ost-row ost-page${on ? "" : " off"}" data-page="${esc(k)}">
-            <span class="ost-label">${(P.embeds || []).some((e) => e.key === k) ? `<span class="ost-page-ic">${window.OpenSkyIcons.svg(P.embeds.find((e) => e.key === k).icon)}</span>` : ""}${esc(P.names[k])}</span>
-            ${(P.embeds || []).some((e) => e.key === k) ? `<button class="ost-btn ost-small ost-edit-web" data-key="${esc(k)}">Edit</button>` : ""}
-            <span class="ost-order">${on ? `<button class="ost-mini" data-move="-1" ${i === 0 ? "disabled" : ""} aria-label="Up">▲</button><button class="ost-mini" data-move="1" ${i === P.pages.length - 1 ? "disabled" : ""} aria-label="Down">▼</button>` : ""}</span>
+            <span class="ost-label">${(P.embeds || []).some((e) => e.key === k) ? `<span class="ost-page-ic">${window.OpenSkyIcons.svg(P.embeds.find((e) => e.key === k).icon)}</span>` : ""}${esc(pageName(k))}</span>
+            ${(P.embeds || []).some((e) => e.key === k) ? `<button class="ost-btn ost-small ost-edit-web" data-key="${esc(k)}">${t("settings.edit")}</button>` : ""}
+            <span class="ost-order">${on ? `<button class="ost-mini" data-move="-1" ${i === 0 ? "disabled" : ""} aria-label="${t("settings.up")}">▲</button><button class="ost-mini" data-move="1" ${i === P.pages.length - 1 ? "disabled" : ""} aria-label="${t("settings.down")}">▼</button>` : ""}</span>
             ${this.toggle(`page-${k}`, on)}
           </div>`; }).join("")}
-        <div class="ost-buttons"><button class="ost-btn ost-add-web">+ Add a web page</button></div>
-        <div class="ost-note">A web page gets its own button down the side — a Home Assistant dashboard, a camera, a school portal, any website.</div>
+        <div class="ost-buttons"><button class="ost-btn ost-add-web">${t("settings.addWeb")}</button></div>
+        <div class="ost-note">${t("settings.webNote")}</div>
       </section>
       <section class="ost-section">
-        <h3>Look &amp; extras</h3>
-        <div class="ost-row"><span class="ost-label">Accent color</span><span class="ost-chips">${[...accents, ...(custom ? [custom] : [])].map((c) => `<button class="ost-chip${c === P.prefs.accent ? " on" : ""}" data-accent="${c}" aria-label="${c}"></button>`).join("")}</span></div>
-        <div class="ost-row"><span class="ost-label">Or a color code</span><span class="ost-swatch"></span><input class="ost-input ost-hex" maxlength="7" data-okb-caps="off" autocomplete="off" spellcheck="false" placeholder="#3b82f6" value="${esc(this.hexDraft)}"><button class="ost-btn ost-hex-use">Use</button></div>
-        <div class="ost-note ost-hex-note">Any color as a code, e.g. your team's color (the # is optional).</div>
-        <div class="ost-row"><span class="ost-label">Word game</span><span class="ost-seg" data-seg="wordgame"><button data-v="nyt" class="${P.prefs.wordgame === "nyt" ? "on" : ""}">NYT's daily word</button><button data-v="opensky" class="${P.prefs.wordgame === "opensky" ? "on" : ""}">OpenSky's words</button></span></div>
-        <div class="ost-row">${this.toggle("photos", P.prefs.photos)}<span class="ost-label">Photo slideshow on Home</span></div>
-        <div class="ost-row"><span class="ost-label">Trash day</span><select class="ost-select" data-pref="trashDay">${[["", "No pickup icons"], ["monday", "Monday"], ["tuesday", "Tuesday"], ["wednesday", "Wednesday"], ["thursday", "Thursday"], ["friday", "Friday"]].map(([v, l]) => `<option value="${v}" ${v === P.prefs.trashDay ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-        <div class="ost-note">Calendars, lists and passwords: Set up from your phone (below), which has the keyboard-friendly forms.</div>
+        <h3>${t("settings.look")}</h3>
+        <div class="ost-row"><span class="ost-label">${t("settings.accent")}</span><span class="ost-chips">${[...accents, ...(custom ? [custom] : [])].map((c) => `<button class="ost-chip${c === P.prefs.accent ? " on" : ""}" data-accent="${c}" aria-label="${c}"></button>`).join("")}</span></div>
+        <div class="ost-row"><span class="ost-label">${t("settings.colorCode")}</span><span class="ost-swatch"></span><input class="ost-input ost-hex" maxlength="7" data-okb-caps="off" autocomplete="off" spellcheck="false" placeholder="#3b82f6" value="${esc(this.hexDraft)}"><button class="ost-btn ost-hex-use">${t("settings.use")}</button></div>
+        <div class="ost-note ost-hex-note">${t("settings.colorCodeNote")}</div>
+        <div class="ost-row"><span class="ost-label">${t("settings.wordGame")}</span><span class="ost-seg" data-seg="wordgame"><button data-v="nyt" class="${P.prefs.wordgame === "nyt" ? "on" : ""}">${t("settings.wordNyt")}</button><button data-v="opensky" class="${P.prefs.wordgame === "opensky" ? "on" : ""}">${t("settings.wordOpensky")}</button></span></div>
+        <div class="ost-row">${this.toggle("photos", P.prefs.photos)}<span class="ost-label">${t("settings.photos")}</span></div>
+        <div class="ost-row"><span class="ost-label">${t("settings.trashDay")}</span><select class="ost-select" data-pref="trashDay">${[["", t("settings.noPickup")], ["monday", t("settings.monday")], ["tuesday", t("settings.tuesday")], ["wednesday", t("settings.wednesday")], ["thursday", t("settings.thursday")], ["friday", t("settings.friday")]].map(([v, l]) => `<option value="${v}" ${v === P.prefs.trashDay ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+        <div class="ost-note">${t("settings.phoneNote")}</div>
       </section>
       <section class="ost-section">
-        <h3>Backups</h3>
-        <div class="ost-row"><span class="ost-label">Every night to</span><select class="ost-select ost-wide" data-backup="destination">${placeOpts.map(([v, l]) => `<option value="${esc(v)}" ${v === (P.backup.destination || "") ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></div>
-        <div class="ost-row"><span class="ost-label">At</span><select class="ost-select" data-backup="time">${["01:00", "02:00", "03:00", "04:00", "05:00"].map((t) => `<option value="${t}" ${t === P.backup.time ? "selected" : ""}>${this.fmt(t)}</option>`).join("")}</select>
-          <span class="ost-label ost-gap">Keep</span><select class="ost-select" data-backup="keep">${[7, 14, 30, 90].map((n) => `<option value="${n}" ${n === P.backup.keep ? "selected" : ""}>${n}</option>`).join("")}</select></div>
-        <div class="ost-row">${this.toggle("secrets", P.backup.includeSecrets)}<span class="ost-label">Include passwords &amp; keys</span></div>
+        <h3>${t("settings.backups")}</h3>
+        <div class="ost-row"><span class="ost-label">${t("settings.backupTo")}</span><select class="ost-select ost-wide" data-backup="destination">${placeOpts.map(([v, l]) => `<option value="${esc(v)}" ${v === (P.backup.destination || "") ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></div>
+        <div class="ost-row"><span class="ost-label">${t("settings.at")}</span><select class="ost-select" data-backup="time">${["01:00", "02:00", "03:00", "04:00", "05:00"].map((t) => `<option value="${t}" ${t === P.backup.time ? "selected" : ""}>${this.fmt(t)}</option>`).join("")}</select>
+          <span class="ost-label ost-gap">${t("settings.keep")}</span><select class="ost-select" data-backup="keep">${[7, 14, 30, 90].map((n) => `<option value="${n}" ${n === P.backup.keep ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+        <div class="ost-row">${this.toggle("secrets", P.backup.includeSecrets)}<span class="ost-label">${t("settings.includeSecrets")}</span></div>
         <div class="ost-note${st.ok === false ? " ost-bad" : ""}">${last}</div>
-        <div class="ost-note">Plug in a USB stick, or open a network folder on the Pi, and it shows up in the list.</div>
-        <div class="ost-buttons"><button class="ost-btn ost-backup-now">Back up now</button></div>
+        <div class="ost-note">${t("settings.backupHelp")}</div>
+        <div class="ost-buttons"><button class="ost-btn ost-backup-now">${t("settings.backupNow")}</button></div>
       </section>`;
     // pages
     box.querySelectorAll(".ost-page").forEach((row) => {
       const k = row.dataset.page;
       row.querySelector(".ost-toggle").onclick = () => {
         const pages = P.pages.includes(k) ? P.pages.filter((x) => x !== k) : [...P.pages, k];
-        if (!pages.length) return window.OpenSkyToast("Keep at least one page", "error");
+        if (!pages.length) return window.OpenSkyToast(t("settings.keepOnePage"), "error");
         this.savePrefs({ pages });
       };
       row.querySelectorAll("[data-move]").forEach((b) => { b.onclick = () => { const pages = [...P.pages], i = pages.indexOf(k), j = i + Number(b.dataset.move); [pages[i], pages[j]] = [pages[j], pages[i]]; this.savePrefs({ pages }); }; });
@@ -304,11 +308,11 @@ Module.register("MMM-OpenSky-Settings", {
       swatch.classList.toggle("empty", !c);
       if (c) swatch.style.setProperty("--c", c);
       hexNote.classList.toggle("ost-bad", !!(c && A.light(c)));
-      hexNote.textContent = c && A.light(c) ? "That color is very light: white text on buttons will be hard to read." : hexNoteText;
+      hexNote.textContent = c && A.light(c) ? t("settings.colorLight") : hexNoteText;
     };
     const useHex = () => {
       const c = A.code(hexIn.value);
-      if (!c) return window.OpenSkyToast("Type a color code like #3b82f6", "error");
+      if (!c) return window.OpenSkyToast(t("settings.colorTypeCode"), "error");
       this.hexDraft = c;
       this.sendNotification("HIDE_KEYBOARD");
       pickAccent(c);
@@ -322,28 +326,28 @@ Module.register("MMM-OpenSky-Settings", {
     box.querySelector('[data-pref="trashDay"]').onchange = (e) => this.savePrefs({ trashDay: e.target.value });
     box.querySelectorAll("[data-backup]").forEach((el) => { el.onchange = (e) => this.savePrefs({ backup: { [el.dataset.backup]: el.dataset.backup === "keep" ? Number(e.target.value) : e.target.value } }); });
     box.querySelector('.ost-toggle[data-id="secrets"]').onclick = () => this.savePrefs({ backup: { includeSecrets: !P.backup.includeSecrets } });
-    box.querySelector(".ost-backup-now").onclick = (e) => { e.currentTarget.disabled = true; e.currentTarget.textContent = "Backing up…"; this.sendSocketNotification("OS_SET_BACKUP_RUN"); };
+    box.querySelector(".ost-backup-now").onclick = (e) => { e.currentTarget.disabled = true; e.currentTarget.textContent = t("settings.backingUp"); this.sendSocketNotification("OS_SET_BACKUP_RUN"); };
     const rb = box.querySelector(".ost-restart [data-act]");
     if (rb) rb.onclick = () => this.system(rb);
   },
 
   /* ---------------- add / edit a web page ---------------- */
   webFormHtml(P, esc) {
-    const f = this.webForm;
+    const f = this.webForm, t = (k, v, fb) => this.t(k, v, fb);
     return `
       <section class="ost-section ost-webform">
-        <h3>${f.key ? "Edit web page" : "Add a web page"}</h3>
-        <div class="ost-row"><span class="ost-label">Name</span><input class="ost-input" data-wf="title" maxlength="24" placeholder="e.g. Smart Home, Cameras, School" value="${esc(f.title)}"></div>
-        <div class="ost-row"><span class="ost-label">Address</span><input class="ost-input" data-wf="url" inputmode="url" data-okb-caps="off" placeholder="${f.locked && !f.url ? "Kept private — type to change" : "https://… or http://192.168.1.20:8123"}" value="${esc(f.url)}"></div>
-        <div class="ost-row ost-top"><span class="ost-label">Icon</span><span class="ost-icons">${window.OpenSkyIcons.webPage.map((i) => `<button class="ost-icon${i === f.icon ? " on" : ""}" data-icon="${i}" aria-label="${i}">${window.OpenSkyIcons.svg(i)}</button>`).join("")}</span></div>
-        <div class="ost-row">${this.toggle("wf-lock", f.locked || !!f.pin)}<span class="ost-label">Lock with a PIN</span>
-          <input class="ost-input ost-pin" data-wf="pin" inputmode="numeric" maxlength="8" placeholder="${f.locked ? "PIN set — type a new one" : "4–8 digits"}" ${f.locked || f.pin ? "" : "hidden"}></div>
-        <div class="ost-note">With a PIN, the page asks for it every time it opens. Logins inside the page (e.g. Home Assistant) are remembered.</div>
+        <h3>${f.key ? t("settings.editWeb") : t("settings.addWebTitle")}</h3>
+        <div class="ost-row"><span class="ost-label">${t("settings.name")}</span><input class="ost-input" data-wf="title" maxlength="24" placeholder="${t("settings.namePlaceholder")}" value="${esc(f.title)}"></div>
+        <div class="ost-row"><span class="ost-label">${t("settings.address")}</span><input class="ost-input" data-wf="url" inputmode="url" data-okb-caps="off" placeholder="${f.locked && !f.url ? t("settings.addressPrivate") : "https://… or http://192.168.1.20:8123"}" value="${esc(f.url)}"></div>
+        <div class="ost-row ost-top"><span class="ost-label">${t("settings.icon")}</span><span class="ost-icons">${window.OpenSkyIcons.webPage.map((i) => `<button class="ost-icon${i === f.icon ? " on" : ""}" data-icon="${i}" aria-label="${i}">${window.OpenSkyIcons.svg(i)}</button>`).join("")}</span></div>
+        <div class="ost-row">${this.toggle("wf-lock", f.locked || !!f.pin)}<span class="ost-label">${t("settings.lockPin")}</span>
+          <input class="ost-input ost-pin" data-wf="pin" inputmode="numeric" maxlength="8" placeholder="${f.locked ? t("settings.pinSet") : t("settings.pinNew")}" ${f.locked || f.pin ? "" : "hidden"}></div>
+        <div class="ost-note">${t("settings.pinNote")}</div>
         <div class="ost-err" hidden></div>
         <div class="ost-buttons">
-          ${f.key ? `<button class="ost-btn ost-danger ost-wf-remove">Remove</button>` : ""}
-          <button class="ost-btn ost-wf-cancel">Cancel</button>
-          <button class="ost-btn ost-primary ost-wf-save">${f.key ? "Save" : "Add page"}</button>
+          ${f.key ? `<button class="ost-btn ost-danger ost-wf-remove">${t("settings.remove")}</button>` : ""}
+          <button class="ost-btn ost-wf-cancel">${t("settings.cancel")}</button>
+          <button class="ost-btn ost-primary ost-wf-save">${f.key ? t("settings.save") : t("settings.addPage")}</button>
         </div>
       </section>`;
   },
@@ -351,7 +355,7 @@ Module.register("MMM-OpenSky-Settings", {
   focusWebForm() { setTimeout(() => { const b = this.panel && this.panel.querySelector(".ost-webform"); if (b) { b.scrollIntoView({ block: "start" }); } }, 50); },
 
   bindWebForm(box) {
-    const f = this.webForm, q = (sel) => box.querySelector(sel);
+    const f = this.webForm, q = (sel) => box.querySelector(sel), t = (k, v, fb) => this.t(k, v, fb);
     box.querySelectorAll("[data-wf]").forEach((el) => { el.oninput = () => { f[el.dataset.wf] = el.value; }; });
     box.querySelectorAll("[data-icon]").forEach((b) => { b.onclick = () => { f.icon = b.dataset.icon; box.querySelectorAll("[data-icon]").forEach((x) => x.classList.toggle("on", x === b)); }; });
     const lock = q('.ost-toggle[data-id="wf-lock"]'), pin = q(".ost-pin");
@@ -365,21 +369,21 @@ Module.register("MMM-OpenSky-Settings", {
     q(".ost-wf-cancel").onclick = () => { this.webForm = null; this.renderPrefs(); };
     const rm = q(".ost-wf-remove");
     if (rm) rm.onclick = () => {
-      if (!rm.classList.contains("ost-confirm")) { rm.classList.add("ost-confirm"); rm.textContent = "Tap again to remove"; return; }
+      if (!rm.classList.contains("ost-confirm")) { rm.classList.add("ost-confirm"); rm.textContent = t("settings.tapRemove"); return; }
       this.savePrefs({ webPage: { remove: f.key } }); this.webForm = null;
     };
     q(".ost-wf-save").onclick = () => {
       const title = String(f.title || "").trim(), url = String(f.url || "").trim();
-      if (!title) return err("Please give it a name");
-      if (!f.key && !url) return err("Please type the page's address");
-      if (url && !/^https?:\/\/\S+$/i.test(url)) return err("The address starts with http:// or https:// (e.g. http://homeassistant.local:8123)");
+      if (!title) return err(t("settings.errName"));
+      if (!f.key && !url) return err(t("settings.errAddress"));
+      if (url && !/^https?:\/\/\S+$/i.test(url)) return err(t("settings.errUrl"));
       const lockOn = f.lockOn !== undefined ? f.lockOn : !!f.locked;
-      if (lockOn && !f.locked && !/^\d{4,8}$/.test(String(f.pin || ""))) return err("A PIN is 4 to 8 digits");
-      if (lockOn && f.pin && !/^\d{4,8}$/.test(String(f.pin))) return err("A PIN is 4 to 8 digits");
+      if (lockOn && !f.locked && !/^\d{4,8}$/.test(String(f.pin || ""))) return err(t("settings.errPin"));
+      if (lockOn && f.pin && !/^\d{4,8}$/.test(String(f.pin))) return err(t("settings.errPin"));
       const pinOut = lockOn ? (f.pin ? String(f.pin) : null) : (f.locked ? "" : null);
       this.savePrefs({ webPage: { key: f.key, title, url, icon: f.icon, pin: pinOut } });
       this.webForm = null;
-      window.OpenSkyToast(f.key ? "Saved — restart to see the change" : `“${title}” added — restart to see it in the sidebar`, "success");
+      window.OpenSkyToast(f.key ? t("settings.savedRestart") : t("settings.addedRestart", { title }), "success");
     };
   },
 
@@ -387,11 +391,11 @@ Module.register("MMM-OpenSky-Settings", {
     const box = this.panel && this.panel.querySelector(".ost-status");
     if (!box) return;
     const s = this.status;
-    if (!s) { box.textContent = "Checking…"; return; }
+    if (!s) { box.textContent = this.t("settings.checking"); return; }
     const rows = [
-      ["Internet", s.internet ? "Connected" : "Not connected"],
-      ["Address", s.ip ? `${s.ip}` : "—"],
-      ["OpenSky", (s.version || "—") + (s.updates ? ` · ${s.updateTo || "an update"} available` : s.updates === 0 ? " · up to date" : "")]
+      [this.t("settings.internet"), s.internet ? this.t("settings.connected") : this.t("settings.notConnected")],
+      [this.t("settings.addressLabel"), s.ip ? `${s.ip}` : "—"],
+      [this.t("settings.opensky"), (s.version || "—") + (s.updates ? this.t("settings.updateAvailable", { version: s.updateTo || this.t("settings.anUpdate") }) : s.updates === 0 ? this.t("settings.upToDate") : "")]
     ];
     box.innerHTML = rows.map(() => `<div class="ost-stat"><span></span><b></b></div>`).join("");
     box.querySelectorAll(".ost-stat").forEach((el, i) => { el.children[0].textContent = rows[i][0]; el.children[1].textContent = rows[i][1]; });
@@ -404,7 +408,7 @@ Module.register("MMM-OpenSky-Settings", {
     const act = btn.dataset.act;
     if (act === "reload") { window.location.reload(); return; }
     if (act === "phone") { this.close(); this.sendNotification("OPENSKY_SETUP_OPEN"); return; }
-    const confirmText = { "restart-app": null, update: "Tap again to update", reboot: "Tap again to restart", shutdown: "Tap again to shut down" }[act];
+    const confirmText = { "restart-app": null, update: this.t("settings.tapUpdate"), reboot: this.t("settings.tapRestart"), shutdown: this.t("settings.tapShutDown") }[act];
     if (confirmText && this.confirming !== act) {
       this.confirming = act;
       const label = btn.textContent;
@@ -424,7 +428,7 @@ Module.register("MMM-OpenSky-Settings", {
   },
   toggle(id, on) { return `<button class="ost-toggle${on ? " on" : ""}" data-id="${id}" role="switch" aria-checked="${on}"><span></span></button>`; },
   stepper(id, time) {
-    return `<span class="ost-stepper" data-id="${id}" data-time="${time}"><button class="ost-step" data-d="-15" aria-label="Earlier">−</button><span class="ost-time">${this.fmt(time)}</span><button class="ost-step" data-d="15" aria-label="Later">+</button></span>`;
+    return `<span class="ost-stepper" data-id="${id}" data-time="${time}"><button class="ost-step" data-d="-15" aria-label="${this.t("settings.earlier")}">−</button><span class="ost-time">${this.fmt(time)}</span><button class="ost-step" data-d="15" aria-label="${this.t("settings.later")}">+</button></span>`;
   },
   fmt(t) {
     const [h, m] = t.split(":").map(Number);
