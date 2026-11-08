@@ -9,17 +9,31 @@
  */
 Module.register("MMM-OpenSky-Keyboard", {
   defaults: {
-    layout: "en"
+    layout: "auto"        // "auto" = the layout of config.language (else "en"); or "en" / "sv"
   },
 
   LAYOUTS: {
     en: {
       letters: [["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"], ["a", "s", "d", "f", "g", "h", "j", "k", "l"], ["{shift}", "z", "x", "c", "v", "b", "n", "m", "{back}"], ["{numbers}", ",", "{space}", ".", "{enter}"]],
       numbers: [["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"], ["-", "/", ":", ";", "(", ")", "$", "&", "@", "\""], ["#", "%", "+", "=", "?", "!", "'", "*", "{back}"], ["{letters}", ",", "{space}", ".", "{enter}"]]
+    },
+    sv: {   // Swedish: å ä ö next to the English letters
+      letters: [["q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "å"], ["a", "s", "d", "f", "g", "h", "j", "k", "l", "ö", "ä"], ["{shift}", "z", "x", "c", "v", "b", "n", "m", "{back}"], ["{numbers}", ",", "{space}", ".", "{enter}"]],
+      numbers: [["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"], ["-", "/", ":", ";", "(", ")", "$", "&", "@", "\""], ["#", "%", "+", "=", "?", "!", "'", "*", "{back}"], ["{letters}", ",", "{space}", ".", "{enter}"]]
     }
   },
 
   getStyles() { return ["MMM-OpenSky-Keyboard.css"]; },
+  getScripts() { return ["modules/opensky-lib/client/i18n.js", "modules/opensky-lib/client/i18n/en.js", "modules/opensky-lib/client/i18n/sv.js"]; },
+
+  t(key, vars, fallback) { return window.OpenSkyT(key, vars, fallback); },
+
+  // the layout in use: the one set in opensky.json (keyboard.layout), else the language's own, else English
+  layoutName() {
+    if (this.LAYOUTS[this.config.layout]) return this.config.layout;
+    const lang = String((typeof config !== "undefined" && config.language) || "en").toLowerCase().split("-")[0];
+    return this.LAYOUTS[lang] ? lang : "en";
+  },
 
   start() {
     this.shift = false;
@@ -71,11 +85,13 @@ Module.register("MMM-OpenSky-Keyboard", {
   },
 
   draw() {
-    const rows = (this.LAYOUTS[this.config.layout] || this.LAYOUTS.en)[this.layer];
+    const name = this.layoutName(), rows = this.LAYOUTS[name][this.layer];
+    this.root.dataset.layout = name;
+    this.root.dataset.layer = this.layer;
     const label = {
       "{shift}": `<svg viewBox="0 0 24 24"><path d="M12 4l8 8h-4.5v8h-7v-8H4z"/></svg>`,
       "{back}": `<svg viewBox="0 0 24 24"><path d="M9 5h11a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 20 19H9l-6.5-7z"/><path d="M12 9.5l5 5M17 9.5l-5 5"/></svg>`,
-      "{numbers}": "123", "{letters}": "ABC", "{space}": "space", "{enter}": "return"
+      "{numbers}": "123", "{letters}": "ABC", "{space}": this.t("kb.space"), "{enter}": this.t("kb.return")
     };
     this.root.innerHTML = `<div class="okb-rows">${rows.map((row) => `<div class="okb-row">${row.map((k) => {
       const special = k.startsWith("{");
@@ -83,7 +99,7 @@ Module.register("MMM-OpenSky-Keyboard", {
       const cls = special ? ` okb-${k.slice(1, -1)}` : "";
       const on = k === "{shift}" && this.shift ? " on" : "";
       return `<button class="okb-key${cls}${on}" data-key="${k.replace(/"/g, "&quot;")}">${text}</button>`;
-    }).join("")}</div>`).join("")}<button class="okb-key okb-hide" data-key="{hide}" aria-label="Hide keyboard"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>`;
+    }).join("")}</div>`).join("")}<button class="okb-key okb-hide" data-key="{hide}" aria-label="${this.t("kb.hide")}"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>`;
   },
 
   /* ---------------- typing ---------------- */

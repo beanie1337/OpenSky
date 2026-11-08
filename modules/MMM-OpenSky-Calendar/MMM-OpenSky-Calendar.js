@@ -14,7 +14,7 @@ Module.register("MMM-OpenSky-Calendar", {
   },
 
   getStyles() { return ["MMM-OpenSky-Calendar.css"]; },
-  getScripts() { return ["modules/opensky-lib/client/opensky-client.js"]; },
+  getScripts() { return ["modules/opensky-lib/client/opensky-client.js", "modules/opensky-lib/client/i18n.js", "modules/opensky-lib/client/i18n/en.js", "modules/opensky-lib/client/i18n/sv.js"]; },
 
   start() {
     this.offset = 0;   // months from this month
@@ -61,10 +61,10 @@ Module.register("MMM-OpenSky-Calendar", {
       b.onclick = onTap;
       bar.appendChild(b);
     };
-    if (this.config.canAddEvents) button("os-nav-add", `${this.svg("M12 5v14M5 12h14")}<span class="os-nav-text">Add Event</span>`, () => this.sendNotification("CALENDAR_ADD_EVENT", { date: new Date() }), "Add event");
-    button("os-nav-prev", this.svg("M15 5l-7 7 7 7"), () => this.move(-1), "Previous month");
-    button("os-nav-today", `<span class="os-nav-text">Today</span>`, () => this.today(), "Today");
-    button("os-nav-next", this.svg("M9 5l7 7-7 7"), () => this.move(1), "Next month");
+    if (this.config.canAddEvents) button("os-nav-add", `${this.svg("M12 5v14M5 12h14")}<span class="os-nav-text">${window.OpenSkyT("home.addEvent")}</span>`, () => this.sendNotification("CALENDAR_ADD_EVENT", { date: new Date() }), window.OpenSkyT("calendar.addEvent"));
+    button("os-nav-prev", this.svg("M15 5l-7 7 7 7"), () => this.move(-1), window.OpenSkyT("calendar.prevMonth"));
+    button("os-nav-today", `<span class="os-nav-text">${window.OpenSkyT("home.today")}</span>`, () => this.today(), window.OpenSkyT("home.today"));
+    button("os-nav-next", this.svg("M9 5l7 7-7 7"), () => this.move(1), window.OpenSkyT("calendar.nextMonth"));
     return bar;
   },
 

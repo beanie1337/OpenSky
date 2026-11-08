@@ -40,6 +40,7 @@ const STATIC = {
   "/app.js": ["app.js", "text/javascript; charset=utf-8"],
   "/app.css": ["app.css", "text/css; charset=utf-8"],
   "/opensky-client.js": [path.join("..", "..", "..", "lib", "client", "opensky-client.js"), "text/javascript; charset=utf-8"],
+  "/phone-sv.js": [path.join("..", "..", "..", "lib", "client", "i18n", "phone-sv.js"), "text/javascript; charset=utf-8"],
   "/icon.png": [path.join("..", "..", "..", "lib", "client", "assets", "opensky-icon.png"), "image/png"],
   "/apple-touch-icon.png": [path.join("..", "..", "..", "lib", "client", "assets", "opensky-touch-icon.png"), "image/png"]
 };

@@ -8,7 +8,7 @@ Module.register("MMM-OpenSky-ListsPage", {
   },
 
   getStyles() { return ["modules/opensky-lib/client/list-columns.css", "MMM-OpenSky-ListsPage.css"]; },
-  getScripts() { return ["modules/opensky-lib/client/opensky-client.js"]; },
+  getScripts() { return ["modules/opensky-lib/client/opensky-client.js", "modules/opensky-lib/client/i18n.js", "modules/opensky-lib/client/i18n/en.js", "modules/opensky-lib/client/i18n/sv.js"]; },
 
   start() {
     this.bySource = new Map();   // list provider → lists
@@ -20,10 +20,10 @@ Module.register("MMM-OpenSky-ListsPage", {
       this.root.className = "lp-root";
       this.root.innerHTML = `
         <header class="lp-head">
-          <span class="lp-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Lists</span>
+          <span class="lp-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>${window.OpenSkyT("page.lists")}</span>
         </header>
         <div class="lp-columns"></div>
-        <div class="lp-none" hidden>No lists yet. Add some under <b>"lists"</b> in opensky.json (see docs/configure.md).</div>`;
+        <div class="lp-none" hidden>${window.OpenSkyT("listspage.none")}</div>`;
       this.root.style.setProperty("--lp-columns", this.config.columns);
     }
     this.render();
