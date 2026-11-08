@@ -232,7 +232,7 @@ const header = s.header || {};
 const fixed = [
   { module: "MMM-OpenSky-Settings", config: {} },
   { module: "MMM-OpenSky-Setup", config: {} },
-  ...(s.keyboard && s.keyboard.enabled === false ? [] : [{ module: "MMM-OpenSky-Keyboard", config: { layout: (s.keyboard && s.keyboard.layout) || "en" } }]),
+  ...(s.keyboard && s.keyboard.enabled === false ? [] : [{ module: "MMM-OpenSky-Keyboard", config: { layout: (s.keyboard && s.keyboard.layout) || "auto" } }]),   // "auto": the keyboard follows locale.language
   ...(familyLists.length ? [{ module: "MMM-OpenSky-Lists", config: { lists: familyLists, refreshMinutes: listSettings.refreshMinutes || 2 } }] : []),
   ...(calendarSources.length ? [{ module: "MMM-OpenSky-EventEditor", config: { editable: editableCalendars, servicePort } }] : []),
   ...(calendarSources.length ? [{ module: "MMM-OpenSky-Calendars", config: { sources: calendarSources } }] : []),

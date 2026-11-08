@@ -15,6 +15,9 @@ Module.register("MMM-OpenSky-Header", {
   },
 
   getStyles() { return ["MMM-OpenSky-Header.css"]; },
+  getScripts() { return ["modules/opensky-lib/client/i18n.js", "modules/opensky-lib/client/i18n/en.js", "modules/opensky-lib/client/i18n/sv.js"]; },
+
+  t(key, vars, fallback) { return window.OpenSkyT(key, vars, fallback); },
 
   start() {
     this.now = new Date();
@@ -45,7 +48,7 @@ Module.register("MMM-OpenSky-Header", {
 
     const title = document.createElement("div");
     title.className = "hb-title";
-    title.textContent = this.config.title;
+    title.textContent = this.config.title === "Our Family" ? this.t("header.defaultTitle") : this.config.title;   // (the name config.js uses when none is set)
     row.appendChild(title);
 
     const time = document.createElement("div");
@@ -69,11 +72,11 @@ Module.register("MMM-OpenSky-Header", {
       cd.className = "hb-countdown";
       // Holiday on the day: "Happy Halloween!"; birthday on the day: "Mom's Birthday · today"
       const happy = next.days === 0 && !next.birthday;
-      const when = happy ? "" : next.days === 0 ? "today" : next.days === 1 ? "tomorrow" : `${next.days} days`;
+      const when = happy ? "" : next.days === 0 ? this.t("header.today") : next.days === 1 ? this.t("header.tomorrow") : this.t("header.days", { n: next.days });
       cd.classList.add(`hb-theme-${next.key}`);
       cd.innerHTML = `<span class="hb-cd-ico">${this._occasionIcon(next.key)}</span>`
         + `<span class="hb-cd-name"></span>` + (when ? `<span class="hb-cd-when">${when}</span>` : "");
-      const greeting = { christmas: "Merry Christmas!", newyear: "Happy New Year!", memorial: "Memorial Day" }[next.key] || `Happy ${next.name}!`;
+      const greeting = ["christmas", "newyear", "memorial"].includes(next.key) ? this.t(`header.greeting.${next.key}`) : this.t("header.happy", { name: next.name });
       cd.querySelector(".hb-cd-name").textContent = happy ? greeting : next.name;
       if (next.days === 0) cd.classList.add("hb-cd-today"); // not ".today": MMM-Todoist.css underlines every .today
       row.appendChild(cd);
@@ -94,7 +97,7 @@ Module.register("MMM-OpenSky-Header", {
     }
     if (this.config.countdown.birthdays === false) return;
     const list = payload
-      .filter((e) => /birthday|\bbday\b/i.test(e.title || ""))
+      .filter((e) => /birthday|\bbday\b|födelsedag/i.test(e.title || ""))
       .map((e) => { const d = new Date(Number(e.startDate)); return { name: (e.title || "").trim(), m: d.getMonth(), d: d.getDate() }; });
     const key = JSON.stringify(list);
     if (key !== this._bdayKey) { this._bdayKey = key; this.birthdays = list; this.updateDom(0); }
@@ -121,13 +124,14 @@ Module.register("MMM-OpenSky-Header", {
         ...(this.calendarHolidays || []).filter((h) => h.date.getFullYear() === year).map((h) => ({ key: this._holidayIcon(h.name), name: h.name, date: h.date }))];
     }
     if (this.config.countdown.holidays !== "US") return custom.map(([key, name, date]) => ({ key, name, date }));
-    return [...custom,
-      ["newyear", "New Year's Day", new Date(year, 0, 1)], ["valentine", "Valentine's Day", new Date(year, 1, 14)],
-      ["easter", "Easter", easter], ["mothers", "Mother's Day", nth(4, 0, 2)], ["memorial", "Memorial Day", nth(4, 1, -1)],
-      ["fathers", "Father's Day", nth(5, 0, 3)], ["july4", "4th of July", new Date(year, 6, 4)],
-      ["labor", "Labor Day", nth(8, 1, 1)], ["halloween", "Halloween", new Date(year, 9, 31)],
-      ["thanksgiving", "Thanksgiving", nth(10, 4, 4)], ["christmas", "Christmas", new Date(year, 11, 25)]
-    ].map(([key, name, date]) => ({ key, name, date }));
+    const us = [
+      ["newyear", new Date(year, 0, 1)], ["valentine", new Date(year, 1, 14)],
+      ["easter", easter], ["mothers", nth(4, 0, 2)], ["memorial", nth(4, 1, -1)],
+      ["fathers", nth(5, 0, 3)], ["july4", new Date(year, 6, 4)],
+      ["labor", nth(8, 1, 1)], ["halloween", new Date(year, 9, 31)],
+      ["thanksgiving", nth(10, 4, 4)], ["christmas", new Date(year, 11, 25)]
+    ].map(([key, date]) => [key, this.t(`header.holiday.${key}`), date]);
+    return [...custom, ...us].map(([key, name, date]) => ({ key, name, date }));
   },
 
   // a matching built-in icon for well-known days, else the star
@@ -373,7 +377,7 @@ Module.register("MMM-OpenSky-Header", {
     const c = ev && ev.competitions && ev.competitions[0];
     if (!c || !Array.isArray(c.competitors) || c.competitors.length < 2) return null;     // incomplete data: show nothing
     const st = c.status || {};
-    const side = (x) => ({ abbr: x.team?.abbreviation || "?", name: x.team?.shortDisplayName || x.team?.abbreviation || "Opponent",
+    const side = (x) => ({ abbr: x.team?.abbreviation || "?", name: x.team?.shortDisplayName || x.team?.abbreviation || this.t("header.opponent"),
       logo: x.team?.logo || "", score: x.score == null || x.score === "" ? "0" : String(typeof x.score === "object" ? x.score.displayValue : x.score),
       winner: !!x.winner, id: x.team?.id, home: x.homeAway === "home" });
     const comps = c.competitors.map(side);
@@ -384,7 +388,7 @@ Module.register("MMM-OpenSky-Header", {
     const name = String(st.type?.name || "");
     const off = /POSTPONED|CANCELED|CANCELLED|SUSPENDED|FORFEIT/.test(name);
     return {
-      start, state: off ? "off" : (st.type?.state || "pre"), detail: off ? (st.type?.description || "Postponed") : this._fmtDetail(st.type?.shortDetail || ""),
+      start, state: off ? "off" : (st.type?.state || "pre"), detail: off ? (st.type?.description || this.t("header.postponed")) : this._fmtDetail(st.type?.shortDetail || ""),
       us, them, home: us.home, network: (c.broadcasts || []).flatMap((b) => b.names || [b.media?.shortName]).filter(Boolean)[0] || "",
       possession: c.situation?.possession || null, redZone: !!c.situation?.isRedZone
     };
@@ -432,8 +436,8 @@ Module.register("MMM-OpenSky-Header", {
       // stoppages, so a clock would look stuck next to the TV. Red dot = live.
       const us = `${logo(g.us)}<span class="hb-game-score us">${esc(g.us.score)}</span>`;
       const them = `<span class="hb-game-score">${esc(g.them.score)}</span>${logo(g.them)}`;
-      const status = g.state === "in" ? `<span class="hb-game-live"></span>` : `<span class="hb-game-final">Final</span>`;
-      const result = g.state === "post" ? (g.us.winner ? `<span class="hb-game-wl w">W</span>` : g.them.winner ? `<span class="hb-game-wl l">L</span>` : `<span class="hb-game-wl">T</span>`) : "";
+      const status = g.state === "in" ? `<span class="hb-game-live"></span>` : `<span class="hb-game-final">${this.t("header.final")}</span>`;
+      const result = g.state === "post" ? (g.us.winner ? `<span class="hb-game-wl w">${this.t("header.win")}</span>` : g.them.winner ? `<span class="hb-game-wl l">${this.t("header.loss")}</span>` : `<span class="hb-game-wl">${this.t("header.tie")}</span>`) : "";
       el.innerHTML = `${g.state === "in" ? status : ""}${us}<span class="hb-game-dash">–</span>${them}${g.state === "post" ? status + result : ""}`;
     }
     return el;

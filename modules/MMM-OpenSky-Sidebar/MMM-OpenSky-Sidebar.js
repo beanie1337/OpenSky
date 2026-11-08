@@ -25,7 +25,7 @@ Module.register("MMM-OpenSky-Sidebar", {
   },
 
   getStyles() { return ["MMM-OpenSky-Sidebar.css"]; },
-  getScripts() { return ["modules/opensky-lib/client/opensky-client.js"]; },
+  getScripts() { return ["modules/opensky-lib/client/opensky-client.js", "modules/opensky-lib/client/i18n.js", "modules/opensky-lib/client/i18n/en.js", "modules/opensky-lib/client/i18n/sv.js"]; },
 
   start() {
     this.activeIndex = 0;        // MMM-pages starts on its first page
@@ -120,13 +120,13 @@ Module.register("MMM-OpenSky-Sidebar", {
 
     this.config.pages.forEach((p) => {
       const icon = p.key === "home" ? `<span class="os-badge">${this.escape(this.config.familyInitial)}</span>` : this.icon(p.icon || p.key);
-      col.appendChild(this.tile(`page-${p.key}`, icon, p.label, () => this.goPage(p.index)));
+      col.appendChild(this.tile(`page-${p.key}`, icon, window.OpenSkyT.page(p.key, p.label), () => this.goPage(p.index)));
     });
     const spacer = document.createElement("div");
     spacer.className = "os-side-spacer";
     col.appendChild(spacer);
-    col.appendChild(this.tile("sleep", this.icon("sleep"), "Sleep", () => this.sleep(), true));
-    if (this.config.showSettings) col.appendChild(this.tile("settings", this.icon("settings"), "Settings", () => this.sendNotification("OPENSKY_SETTINGS_OPEN"), true));
+    col.appendChild(this.tile("sleep", this.icon("sleep"), window.OpenSkyT("sidebar.sleep"), () => this.sleep(), true));
+    if (this.config.showSettings) col.appendChild(this.tile("settings", this.icon("settings"), window.OpenSkyT("settings.title"), () => this.sendNotification("OPENSKY_SETTINGS_OPEN"), true));
     this.col = col;
     this.syncActive();
     return wrap;

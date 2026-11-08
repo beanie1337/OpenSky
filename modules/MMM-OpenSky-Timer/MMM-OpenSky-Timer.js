@@ -30,6 +30,12 @@ Module.register("MMM-OpenSky-Timer", {
     return ["MMM-OpenSky-Timer.css"];
   },
 
+  getScripts() {
+    return ["modules/opensky-lib/client/i18n.js", "modules/opensky-lib/client/i18n/en.js", "modules/opensky-lib/client/i18n/sv.js"];
+  },
+
+  t(key, vars, fallback) { return window.OpenSkyT(key, vars, fallback); },
+
   start() {
     this.timers = this.loadTimers(); // [{ id, total, endAt, pausedRemaining, completed }]
     this.tick = null;
@@ -227,8 +233,8 @@ Module.register("MMM-OpenSky-Timer", {
       this.banner.className = "timer-banner";
       this.banner.innerHTML = `
         <span class="timer-banner-icon">${this.getBellIcon()}</span>
-        <span class="timer-banner-text">Timer finished</span>
-        <button class="timer-banner-stop">Stop</button>`;
+        <span class="timer-banner-text">${this.t("timer.finished")}</span>
+        <button class="timer-banner-stop">${this.t("timer.stop")}</button>`;
       this.banner.querySelector(".timer-banner-stop").onclick = () => this.dismissFinished();
       document.body.appendChild(this.banner);
     }
@@ -249,7 +255,7 @@ Module.register("MMM-OpenSky-Timer", {
       this.timers.forEach((t, i) => container.appendChild(this.createTimerDisplay(t, i, this.timers.length > 1)));
       wrapper.appendChild(container);
       // Running: the same buttons add time, right under the rings
-      wrapper.appendChild(this.createQuickAddButtons("Add time"));
+      wrapper.appendChild(this.createQuickAddButtons(this.t("timer.addTime")));
     }
     return wrapper;
   },
@@ -269,21 +275,21 @@ Module.register("MMM-OpenSky-Timer", {
 
     const title = document.createElement("div");
     title.className = "timer-setup-title";
-    title.textContent = "Set a Timer";
+    title.textContent = this.t("timer.setTimer");
     screen.appendChild(title);
 
     const inputs = document.createElement("div");
     inputs.className = "timer-input-container";
-    inputs.appendChild(this.createNumberInput("Hours", "hours", 0, 23));
+    inputs.appendChild(this.createNumberInput(this.t("timer.hours"), "hours", 0, 23));
     inputs.appendChild(this.createColon());
-    inputs.appendChild(this.createNumberInput("Minutes", "minutes", 0, 59));
+    inputs.appendChild(this.createNumberInput(this.t("timer.minutes"), "minutes", 0, 59));
     inputs.appendChild(this.createColon());
-    inputs.appendChild(this.createNumberInput("Seconds", "seconds", 0, 59));
+    inputs.appendChild(this.createNumberInput(this.t("timer.seconds"), "seconds", 0, 59));
     screen.appendChild(inputs);
 
     const startBtn = document.createElement("button");
     startBtn.className = "timer-start-btn";
-    startBtn.textContent = "Start";
+    startBtn.textContent = this.t("timer.start");
     startBtn.onclick = () => {
       document.querySelectorAll(".timer-input-field").forEach((input) => input.blur());
       const val = (id) => parseInt(document.getElementById(`timer-${id}`).value, 10) || 0;
@@ -293,7 +299,7 @@ Module.register("MMM-OpenSky-Timer", {
     screen.appendChild(startBtn);
 
     // Quick timers sit right under Start (they used to be stranded at the bottom of the screen)
-    screen.appendChild(this.createQuickAddButtons("Quick timers"));
+    screen.appendChild(this.createQuickAddButtons(this.t("timer.quickTimers")));
     return screen;
   },
 
@@ -361,10 +367,10 @@ Module.register("MMM-OpenSky-Timer", {
     center.className = "timer-center";
     const time = document.createElement("div");
     time.className = "timer-time-display";
-    time.textContent = timer.completed ? "Done!" : this.formatTime(remaining);
+    time.textContent = timer.completed ? this.t("timer.done") : this.formatTime(remaining);
     const sub = document.createElement("div");
     sub.className = "timer-subtitle";
-    sub.textContent = timer.completed ? "Time's up" : paused ? "Paused" : `of ${this.formatTime(timer.total)}`;
+    sub.textContent = timer.completed ? this.t("timer.timesUp") : paused ? this.t("timer.paused") : this.t("timer.of", { time: this.formatTime(timer.total) });
     center.appendChild(time);
     center.appendChild(sub);
     ring.appendChild(center);
@@ -375,18 +381,18 @@ Module.register("MMM-OpenSky-Timer", {
     if (timer.completed) {
       const stop = document.createElement("button");
       stop.className = "timer-control-btn stop wide";
-      stop.textContent = "Stop";
+      stop.textContent = this.t("timer.stop");
       stop.onclick = () => this.dismissFinished();
       controls.appendChild(stop);
     } else {
       const pauseBtn = document.createElement("button");
       pauseBtn.className = "timer-control-btn pause";
-      pauseBtn.setAttribute("aria-label", paused ? "Resume" : "Pause");
+      pauseBtn.setAttribute("aria-label", paused ? this.t("timer.resume") : this.t("timer.pause"));
       pauseBtn.innerHTML = paused ? this.getPlayIcon() : this.getPauseIcon();
       pauseBtn.onclick = () => this.togglePause(index);
       const cancel = document.createElement("button");
       cancel.className = "timer-control-btn cancel";
-      cancel.setAttribute("aria-label", "Cancel timer");
+      cancel.setAttribute("aria-label", this.t("timer.cancel"));
       cancel.innerHTML = this.getCloseIcon();
       cancel.onclick = () => this.removeTimer(index);
       controls.appendChild(pauseBtn);
@@ -406,7 +412,8 @@ Module.register("MMM-OpenSky-Timer", {
     this.config.quickAddButtons.forEach((btn) => {
       const button = document.createElement("button");
       button.className = "timer-quickadd-btn";
-      button.textContent = btn.label;
+      const std = /^\+(\d+) (min|hr)$/.exec(btn.label);   // the standard "+5 min" / "+1 hr" labels follow the language
+      button.textContent = std ? this.t(std[2] === "hr" ? "timer.plusHr" : "timer.plusMin", { n: std[1] }) : btn.label;
       button.onclick = () => this.quickAdd(btn.seconds);
       container.appendChild(button);
     });

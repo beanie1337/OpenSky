@@ -6,7 +6,9 @@
  */
 Module.register("MMM-OpenSky-Setup", {
   getStyles() { return ["MMM-OpenSky-Setup.css"]; },
-  getScripts() { return ["modules/opensky-lib/client/vendor/qrcode.js"]; },
+  getScripts() { return ["modules/opensky-lib/client/vendor/qrcode.js", "modules/opensky-lib/client/i18n.js", "modules/opensky-lib/client/i18n/en.js", "modules/opensky-lib/client/i18n/sv.js"]; },
+
+  t(key, vars, fallback) { return window.OpenSkyT(key, vars, fallback); },
 
   start() {
     this.mode = null;          // null | "welcome" | "pair"
@@ -67,13 +69,13 @@ Module.register("MMM-OpenSky-Setup", {
         <div class="osu-overlay">
           <div class="osu-card osu-welcome">
             <img class="osu-brand" src="modules/opensky-lib/client/assets/opensky-icon.png" alt="">
-            <h2>Welcome to OpenSky!</h2>
-            <p>Add your calendars, lists, photos and more from your phone — it takes a couple of minutes.</p>
+            <h2>${this.t("setup.welcome")}</h2>
+            <p>${this.t("setup.welcomeSub")}</p>
             <div class="osu-actions">
-              <button class="osu-btn osu-later">Not now</button>
-              <button class="osu-btn osu-primary osu-go">Set up on my phone</button>
+              <button class="osu-btn osu-later">${this.t("setup.notNow")}</button>
+              <button class="osu-btn osu-primary osu-go">${this.t("setup.setUpOnPhone")}</button>
             </div>
-            <div class="osu-foot">You can always find this later in Settings.</div>
+            <div class="osu-foot">${this.t("setup.findLater")}</div>
           </div>
         </div>`;
       h.querySelector(".osu-go").onclick = () => this.openPair();
@@ -84,24 +86,24 @@ Module.register("MMM-OpenSky-Setup", {
     h.innerHTML = `
       <div class="osu-overlay">
         <div class="osu-card osu-pair">
-          <button class="osu-x" aria-label="Close">×</button>
+          <button class="osu-x" aria-label="${this.t("settings.close")}">×</button>
           <div class="osu-left">
             <div class="osu-qr">${info ? this.qr(info.urls[0]) : `<div class="osu-qr-wait">…</div>`}</div>
-            <div class="osu-scan">Scan with your phone's camera</div>
+            <div class="osu-scan">${this.t("setup.scan")}</div>
           </div>
           <div class="osu-right">
-            <h2>Set up from your phone</h2>
+            <h2>${this.t("settings.phone")}</h2>
             <ol class="osu-steps">
-              <li>Join the same Wi-Fi as this screen.</li>
-              <li>Scan the code, or open <b class="osu-url"></b></li>
-              <li>Enter this pairing code:</li>
+              <li>${this.t("setup.step1")}</li>
+              <li>${this.t("setup.step2")} <b class="osu-url"></b></li>
+              <li>${this.t("setup.step3")}</li>
             </ol>
             <div class="osu-code">${info ? [...info.code].map((d, i) => `<span>${d}</span>${i === 2 ? `<i></i>` : ""}`).join("") : ""}</div>
             <div class="osu-expiry"></div>
             <div class="osu-status"></div>
             <div class="osu-actions">
-              <button class="osu-btn osu-newcode">New code</button>
-              <button class="osu-btn osu-close">Close</button>
+              <button class="osu-btn osu-newcode">${this.t("setup.newCode")}</button>
+              <button class="osu-btn osu-close">${this.t("settings.close")}</button>
             </div>
           </div>
         </div>
@@ -120,19 +122,19 @@ Module.register("MMM-OpenSky-Setup", {
       q.addData(text);
       q.make();
       return q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
-    } catch (e) { return `<div class="osu-qr-wait">QR unavailable</div>`; }
+    } catch (e) { return `<div class="osu-qr-wait">${this.t("setup.qrUnavailable")}</div>`; }
   },
 
   renderStatus() {
     const el = this.host && this.host.querySelector(".osu-status");
     if (!el) return;
     const text = {
-      waiting: "Waiting for your phone…",
-      paired: "Phone connected — carry on there",
-      saved: "Saved! Tap Done on your phone when you're finished",
-      done: "All done — OpenSky is restarting with your settings",
-      closed: "Setup has closed",
-      error: `Couldn't start phone setup (${this.errorText || "error"})`
+      waiting: this.t("setup.waiting"),
+      paired: this.t("setup.paired"),
+      saved: this.t("setup.saved"),
+      done: this.t("setup.done"),
+      closed: this.t("setup.closed"),
+      error: this.t("setup.error", { reason: this.errorText || this.t("setup.errorWord") })
     }[this.status];
     el.className = `osu-status is-${this.status}`;
     el.innerHTML = `<i></i><span></span>`;
@@ -143,6 +145,6 @@ Module.register("MMM-OpenSky-Setup", {
     const el = this.host && this.host.querySelector(".osu-expiry");
     if (!el || !this.info) return;
     const s = Math.max(0, Math.round((this.info.expiresAt - Date.now()) / 1000));
-    el.textContent = this.status !== "waiting" ? "" : s > 0 ? `The code works for ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "This code has expired — tap New code";
+    el.textContent = this.status !== "waiting" ? "" : s > 0 ? this.t("setup.codeWorks", { time: `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` }) : this.t("setup.codeExpired");
   }
 });

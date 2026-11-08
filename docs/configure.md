@@ -43,7 +43,13 @@ After changing either file, run **`opensky restart`**. If the screen doesn't com
 - `locale.timeFormat`: `12` (3:00 PM) or `24` (15:00).
 - `locale.units`: `"imperial"` (°F) or `"metric"` (°C).
 - `locale.firstDayOfWeek`: `0` = Sunday, `1` = Monday (month view).
-- `locale.locale`: how dates are written (`"en-US"`, `"en-GB"`…) — on the screen and in date boxes.
+- `locale.locale`: how dates are written (`"en-US"`, `"en-GB"`, `"sv-SE"`…) — on the screen and in date boxes.
+- `locale.language`: the language of the words on the screen and on the phone setup page: `"en"` (English) or `"sv"`
+  (Swedish). It can also be set from the phone (Your family → Language). Set `locale.locale` to match (`"sv-SE"`).
+  The on-screen keyboard follows it (Swedish has å ä ö); `keyboard.layout` overrides that. Words that come from outside
+  OpenSky stay as they are: holiday names from the Holidays calendar, messages from other services, the word game's words.
+  To add a language, copy `lib/client/i18n/en.js` to `<code>.js`, translate the right-hand side, list the file in each
+  module's `getScripts()` and run `node tools/test-i18n.js` (it checks that no text is missing).
 - The **time zone** comes from the Pi itself. To change it: `sudo raspi-config nonint do_change_timezone America/Chicago` (use your zone).
 
 ## Accent color and size

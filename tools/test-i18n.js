@@ -6,7 +6,7 @@ const ok = (n, c, i) => { c ? passed++ : failed++; console.log(`${c ? "PASS" : "
 const root = path.join(__dirname, "..");
 const dir = path.join(root, "lib", "client");
 const load = (win, ...files) => { const ctx = vm.createContext({ window: win, config: win.config }); for (const f of files) vm.runInContext(fs.readFileSync(path.join(dir, f), "utf8"), ctx, { filename: f }); return ctx; };
-const langs = fs.readdirSync(path.join(dir, "i18n")).filter((f) => f.endsWith(".js")).map((f) => f.slice(0, -3));
+const langs = fs.readdirSync(path.join(dir, "i18n")).filter((f) => f.endsWith(".js") && !f.startsWith("phone-")).map((f) => f.slice(0, -3));
 const win = { config: { language: "en" } };
 load(win, "i18n.js", ...langs.map((l) => `i18n/${l}.js`));
 const S = win.OpenSkyStrings, en = S.en, holders = (s) => (s.match(/\{\w+\}/g) || []).sort().join();
@@ -48,5 +48,18 @@ for (const m of fs.readdirSync(path.join(root, "modules"))) {
 const unknown = [...used].filter((u) => !(u.split(": ")[1] in en));
 ok("13 every key used by a module exists in English", !unknown.length, unknown.slice(0, 5));
 ok("14 the modules do use translations", used.size > 0, used.size);
+// the phone setup page: its texts are keyed by the English wording, tr("…"), with a Swedish map in i18n/phone-sv.js
+const phoneSrc = fs.readFileSync(path.join(root, "modules", "MMM-OpenSky-Setup", "phone", "app.js"), "utf8");
+const phoneKeys = new Set([...phoneSrc.matchAll(/\btr\(\s*("(?:[^"\\]|\\.)*")/g)].map((x) => JSON.parse(x[1])));
+const pwin = {};
+load(pwin, "i18n/phone-sv.js");
+const svp = pwin.OpenSkyPhone.sv, holders2 = (s) => (s.match(/\{\w+\}/g) || []).sort().join();
+const notTranslated = [...phoneKeys].filter((k) => !(k in svp)), stale = Object.keys(svp).filter((k) => !phoneKeys.has(k));
+ok("15 the phone page has a Swedish text for every tr(\"…\")", !notTranslated.length, notTranslated.slice(0, 5));
+ok("16 phone-sv.js has no text the phone page doesn't use", !stale.length, stale.slice(0, 5));
+ok("17 the phone texts keep their {placeholders}", [...phoneKeys].every((k) => !(k in svp) || holders2(k) === holders2(svp[k])),
+  [...phoneKeys].filter((k) => k in svp && holders2(k) !== holders2(svp[k])).slice(0, 5));
+ok("18 the phone page and the helper serve phone-sv.js", /phone-sv\.js/.test(fs.readFileSync(path.join(root, "modules", "MMM-OpenSky-Setup", "phone", "index.html"), "utf8"))
+  && /"\/phone-sv\.js"/.test(fs.readFileSync(path.join(root, "modules", "MMM-OpenSky-Setup", "node_helper.js"), "utf8")));
 console.log(`SUMMARY pass=${passed} fail=${failed}`);
 process.exit(failed ? 1 : 0);

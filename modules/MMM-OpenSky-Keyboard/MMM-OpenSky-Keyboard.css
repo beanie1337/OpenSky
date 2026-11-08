@@ -22,6 +22,7 @@
 .okb-rows { position: relative; display: flex; flex-direction: column; gap: 10px; height: 100%; max-width: 1400px; margin: 0 auto; }
 .okb-row { flex: 1; display: flex; justify-content: center; gap: 8px; min-height: 0; }
 .okb-row:nth-child(2) { padding: 0 4.5%; }      /* the middle row sits in a little, like a real keyboard */
+.okb[data-layout="sv"][data-layer="letters"] .okb-row:nth-child(2) { padding: 0; }   /* Swedish: the middle row has 11 keys, no room to sit in */
 
 .okb-key {
   flex: 1 1 0;
