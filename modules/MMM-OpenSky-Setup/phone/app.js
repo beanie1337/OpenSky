@@ -41,7 +41,7 @@
     try { r = await fetch(url, { method, credentials: "same-origin", headers: { "Content-Type": "application/json", "X-OpenSky": "1" }, body: body ? JSON.stringify(body) : undefined }); }
     catch (e) { throw new Error(offline()); }
     const d = await r.json().catch(() => ({}));
-    if (r.status === 401 && d.pair) { showPair(); throw new Error(tr("Please pair again")); }
+    if (r.status === 401 && d.pair) { showPair(); throw Object.assign(new Error(tr("Please pair again")), { needsPair: true }); }
     if (!r.ok) throw new Error(d.error || tr("Error {code}", { code: r.status }));
     return d;
   };
@@ -182,7 +182,7 @@
       if (!Array.isArray(S.calendar.sources)) S.calendar.sources = [];
       if (!Array.isArray(S.lists.lists)) S.lists.lists = [];
       render();
-    } catch (e) { if (!/pair/i.test(e.message)) $app.replaceChildren(el("div", { class: "pair" }, el("h1", {}, tr("Couldn't load")), el("p", { class: "lead" }, e.message), el("button", { class: "btn primary big", onclick: load }, tr("Try again")))); }
+    } catch (e) { if (!e.needsPair) $app.replaceChildren(el("div", { class: "pair" }, el("h1", {}, tr("Couldn't load")), el("p", { class: "lead" }, e.message), el("button", { class: "btn primary big", onclick: load }, tr("Try again")))); }
   }
 
   function render() {
